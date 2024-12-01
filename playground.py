@@ -145,3 +145,47 @@ if first == second:
 else:
     print("Results are different!")
 print()
+
+# %% MARK: Print atimes with scandir by passing in file descriptors
+
+def print_atimes_scandir_with_fd(directory):
+    """
+    Iterates over a directory and prints the access time (atime) of each file and directory
+    without updating their `atime`.
+
+    :param directory: Path to the directory to scan.
+
+    :note: This function uses `os.scandir` to iterate over the directory entries. It appears that `os.scandir` can also take in a file descriptor to the directory, just like `os.listdir`. This allows us to avoid updating the access time of the directory itself when listing its contents.
+    """
+    results = []
+    dirfd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOATIME)
+
+    for entry in os.scandir(dirfd):
+        entry_path = os.path.join(directory, entry.path)
+        # Use low-level file descriptor access
+        fd = os.open(entry_path, os.O_RDONLY | os.O_NOATIME)
+        stats = os.fstat(fd)
+        os.close(fd)
+        results.append((entry_path, time.ctime(stats.st_atime)))
+
+        if entry.is_dir(follow_symlinks=False):
+            results.extend(print_atimes_scandir_with_fd(entry_path))
+    return results
+
+test_root = "/tmp/test_root"
+print(f"Running print_atimes_scandir_with_fd on {test_root}")
+set_up_env(test_root)
+
+print("First run:")
+first = print_atimes_scandir_with_fd(test_root)
+print(first)
+
+print("Second run:")
+second = print_atimes_scandir_with_fd(test_root)
+print(second)
+
+if first == second:
+    print("Results are the same!")
+else:
+    print("Results are different!")
+print()
