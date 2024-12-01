@@ -1,0 +1,142 @@
+# %%
+import os
+import time
+
+# %% MARK: utils
+
+def set_times(path, atime=None, mtime=None):
+    """
+    Set atime and mtime recursively on files and directories.
+
+    :param path: Path to the directory or file
+    :param atime: Access time (timestamp), defaults to current time if None
+    :param mtime: Modification time (timestamp), defaults to current time if None
+    """
+    if atime is None or mtime is None:
+        current_time = time.time()
+        atime = atime or current_time
+        mtime = mtime or current_time
+
+    for root, dirs, files in os.walk(path, topdown=False):
+        # Set times for files
+        for file in files:
+            full_path = os.path.join(root, file)
+            os.utime(full_path, (atime, mtime))
+
+        # Set times for directories
+        for dir in dirs:
+            full_path = os.path.join(root, dir)
+            os.utime(full_path, (atime, mtime))
+
+    # Set times for the root directory itself
+    os.utime(path, (atime, mtime))
+
+def set_up_env(test_root):
+    """
+    Create files and directories in the test_root directory and set custom atime and mtime.
+    """
+
+    if os.path.exists(test_root):
+        import shutil
+        shutil.rmtree(test_root)
+
+    os.makedirs(test_root, exist_ok=True)
+
+    # Create files and directories
+    with open(os.path.join(test_root, "file1.txt"), "w") as f:
+        f.write("Test content for file1.")
+
+    subdir = os.path.join(test_root, "subdir")
+    os.makedirs(subdir, exist_ok=True)
+    with open(os.path.join(subdir, "file2.txt"), "w") as f:
+        f.write("Test content for file2.")
+
+    # Set custom atime and mtime
+    custom_atime = 1670000000  # Example custom atime
+    custom_mtime = 1670000000  # Example custom mtime
+    set_times(
+        test_root, atime=custom_atime, mtime=custom_mtime
+    )
+
+# %% MARK: Print atimes with scandir
+
+def print_atimes_scandir(directory):
+    """
+    Iterates over a directory and prints the access time (atime) of each file and directory
+    without updating their `atime`.
+
+    :param directory: Path to the directory to scan.
+    """
+    results = []
+    for entry in os.scandir(directory):
+        # Use low-level file descriptor access
+        fd = os.open(entry.path, os.O_RDONLY | os.O_NOATIME)
+        stats = os.fstat(fd)
+        os.close(fd)
+        results.append((entry.path, time.ctime(stats.st_atime)))
+
+        if entry.is_dir(follow_symlinks=False):
+            results.extend(print_atimes_scandir(entry.path))
+    return results
+
+test_root = "/tmp/test_root"
+print(f"Running print_atimes_scandir on {test_root}")
+set_up_env(test_root)
+
+print("First run:")
+first = print_atimes_scandir(test_root)
+print(first)
+
+print("Second run:")
+second = print_atimes_scandir(test_root)
+print(second)
+
+if first == second:
+    print("Results are the same!")
+else:
+    print("Results are different!")
+print()
+
+
+# %% MARK: Print atimes with listdir
+
+def print_atimes_listdir(directory):
+    """
+    Iterates over a directory and prints the access time (atime) of each file and directory
+    without updating their `atime`.
+
+    :param directory: Path to the directory to scan.
+    """
+    results = []
+    dirfd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOATIME)
+
+    for entry in os.listdir(dirfd):
+        entry_path = os.path.join(directory, entry)
+        # Use low-level file descriptor access
+        fd = os.open(entry_path, os.O_RDONLY | os.O_NOATIME)
+        stats = os.fstat(fd)
+        os.close(fd)
+        results.append((entry_path, time.ctime(stats.st_atime)))
+
+        # Recursively scan directories
+        if os.path.isdir(entry_path) and not os.path.islink(entry_path):
+            results.extend(print_atimes_listdir(entry_path))
+    return results
+
+test_root = "/tmp/test_root"
+print(f"Running print_atimes_listdir on {test_root}")
+set_up_env(test_root)
+
+print("First run:")
+first = print_atimes_listdir(test_root)
+print(first)
+
+print("Second run:")
+second = print_atimes_listdir(test_root)
+print(second)
+
+if first == second:
+    print("Results are the same!")
+else:
+    print("Results are different!")
+print()
