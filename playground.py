@@ -11,6 +11,8 @@ def set_times(path, atime=None, mtime=None):
     :param path: Path to the directory or file
     :param atime: Access time (timestamp), defaults to current time if None
     :param mtime: Modification time (timestamp), defaults to current time if None
+
+    :note: Derived from https://chatgpt.com/share/674cc769-85c8-8010-9f58-29a393814484
     """
     if atime is None or mtime is None:
         current_time = time.time()
@@ -34,6 +36,8 @@ def set_times(path, atime=None, mtime=None):
 def set_up_env(test_root):
     """
     Create files and directories in the test_root directory and set custom atime and mtime.
+
+    :note: Derived from https://chatgpt.com/share/674cc769-85c8-8010-9f58-29a393814484
     """
 
     if os.path.exists(test_root):
@@ -68,6 +72,7 @@ def print_atimes_scandir(directory):
     :param directory: Path to the directory to scan.
 
     :note: This function uses `os.scandir` to iterate over the directory entries. According to the [Python docs](https://docs.python.org/3/library/os.html#os.scandir), the `os.scandir` uses [`opendir`](https://man7.org/linux/man-pages/man3/opendir.3.html) under the hood. This may restrict the flexibility of the `os.scandir` because e.g. `opendir` doesn't appear to provide a way to set custom flags like `O_NOATIME` to avoid updating the access time of the directory when listing its contents.
+    :note: Derived from https://chatgpt.com/share/674cc769-85c8-8010-9f58-29a393814484
     """
     results = []
     for entry in os.scandir(directory):
