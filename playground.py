@@ -66,6 +66,8 @@ def print_atimes_scandir(directory):
     without updating their `atime`.
 
     :param directory: Path to the directory to scan.
+
+    :note: This function uses `os.scandir` to iterate over the directory entries. According to the [Python docs](https://docs.python.org/3/library/os.html#os.scandir), the `os.scandir` uses [`opendir`](https://man7.org/linux/man-pages/man3/opendir.3.html) under the hood. This may restrict the flexibility of the `os.scandir` because e.g. `opendir` doesn't appear to provide a way to set custom flags like `O_NOATIME` to avoid updating the access time of the directory when listing its contents.
     """
     results = []
     for entry in os.scandir(directory):
@@ -106,6 +108,9 @@ def print_atimes_listdir(directory):
     without updating their `atime`.
 
     :param directory: Path to the directory to scan.
+
+    :note: This function uses `os.listdir` to iterate over the directory entries. It appears that if we pass in an open file descriptor to `os.listdir`, the `os.listdir` function will use the fd as-is using `fdopendir`: https://github.com/python/cpython/blob/04673d2f14414fce7a2372de3048190f66488e6e/Modules/posixmodule.c#L4506-L4517
+    The effect of this is that the `os.listdir` function can be configured (using os.O_NOATIME) to not update the access time of the directory itself when listing its contents.
     """
     results = []
     dirfd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOATIME)
